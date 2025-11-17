@@ -1,3 +1,4 @@
+
 import React from 'react';
 import type { DeckId, VoiceOption, EffectType, EffectParams, EffectTargets } from '../types';
 import { voiceOptions } from '../types';
@@ -47,7 +48,7 @@ const Mixer: React.FC<MixerProps> = ({
   const controlDisabled = isPlaylistEmpty;
 
   return (
-    <div className="w-full md:w-1/4 flex flex-col justify-between p-4 bg-gray-900 rounded-lg space-y-4">
+    <div className="w-full md:w-[30%] flex flex-col justify-between p-4 bg-gray-900 rounded-lg space-y-4">
       <h2 className="text-2xl font-bold text-center text-white">RADIO ESCOLA JOANA</h2>
       
       <div className="flex items-center justify-center space-x-6">
