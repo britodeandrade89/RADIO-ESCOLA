@@ -1,0 +1,5 @@
+{
+  "name": "Radio Escola Joana - AI DJ",
+  "description": "A virtual DJ deck application that allows users to mix their own music and generate DJ announcements and audio clips using the Gemini API for a personalized radio experience.",
+  "requestFramePermissions": []
+}
