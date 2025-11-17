@@ -3,12 +3,16 @@ import type { DeckId, EffectType, EffectParams, EffectTargets } from '../types';
 let audioContext: AudioContext | null = null;
 let sources: Record<DeckId, MediaElementAudioSourceNode | null> = { A: null, B: null };
 
-// Nodes do Roteamento Principal
-let effectInput: GainNode; // Ponto de entrada para todos os efeitos
-let dryGain: GainNode;     // Controla o sinal original (sem efeito)
-let wetGain: GainNode;     // Controla o sinal processado (com efeito)
+// NEW: Volume Control Nodes
+let gainA: GainNode, gainB: GainNode;
+let masterGain: GainNode;
 
-// Nodes de Efeitos
+// Main Routing Nodes
+let effectInput: GainNode;
+let dryGain: GainNode;
+let wetGain: GainNode;
+
+// Effect Nodes
 let echoDelay: DelayNode, echoFeedback: GainNode;
 let flangerDelay: DelayNode, flangerFeedback: GainNode, flangerLFO: OscillatorNode, flangerDepth: GainNode;
 let reverbNode: ConvolverNode;
@@ -19,25 +23,28 @@ export const initAudioEffects = (audioElA: HTMLAudioElement, audioElB: HTMLAudio
     if (audioContext) return;
     audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
     
-    // Cria as fontes de áudio a partir dos elementos HTML
     sources.A = audioContext.createMediaElementSource(audioElA);
     sources.B = audioContext.createMediaElementSource(audioElB);
 
-    // Cria os caminhos de sinal principais: um para efeitos (wet) e um para o sinal original (dry)
+    // Create volume nodes
+    gainA = audioContext.createGain();
+    gainB = audioContext.createGain();
+    masterGain = audioContext.createGain();
+
+    // Create main signal paths
     effectInput = audioContext.createGain();
     dryGain = audioContext.createGain();
     wetGain = audioContext.createGain();
 
-    // --- Constrói a Cadeia de Efeito Echo ---
-    // A saída desta cadeia se conecta ao 'wetGain'
+    // --- Build Effect Chains ---
+    // Echo
     echoDelay = audioContext.createDelay(1.0);
     echoFeedback = audioContext.createGain();
     echoDelay.connect(echoFeedback);
     echoFeedback.connect(echoDelay);
     echoDelay.connect(wetGain);
-
-    // --- Constrói a Cadeia de Efeito Flanger ---
-    // A saída desta cadeia se conecta ao 'wetGain'
+    
+    // Flanger
     flangerLFO = audioContext.createOscillator();
     flangerDepth = audioContext.createGain();
     flangerDelay = audioContext.createDelay(0.1);
@@ -50,52 +57,49 @@ export const initAudioEffects = (audioElA: HTMLAudioElement, audioElB: HTMLAudio
     flangerDelay.connect(wetGain);
     flangerLFO.start();
 
-    // --- Constrói o Efeito Reverb ---
-    // Usa um reverb de convolução com uma resposta de impulso gerada
-    // A saída desta cadeia se conecta ao 'wetGain'
+    // Reverb
     const sampleRate = audioContext.sampleRate;
-    const duration = 2;
-    const decay = 2;
-    const length = sampleRate * duration;
-    const impulse = audioContext.createBuffer(2, length, sampleRate);
+    const impulse = audioContext.createBuffer(2, sampleRate * 2, sampleRate);
     const impulseL = impulse.getChannelData(0);
-    const impulseR = impulse.getChannelData(1);
-    for (let i = 0; i < length; i++) {
-        impulseL[i] = (Math.random() * 2 - 1) * Math.pow((length - i) / length, decay);
-        impulseR[i] = (Math.random() * 2 - 1) * Math.pow((length - i) / length, decay);
+    for (let i = 0; i < impulse.length; i++) {
+        impulseL[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / impulse.length, 2);
     }
     reverbNode = audioContext.createConvolver();
     reverbNode.buffer = impulse;
     reverbNode.connect(wetGain);
 
-    // Inicialmente, conecta as fontes apenas ao caminho 'dry'
-    sources.A.connect(dryGain);
-    sources.B.connect(dryGain);
-    
-    // Combina os sinais 'dry' e 'wet' no destino final
-    dryGain.connect(audioContext.destination);
-    wetGain.connect(audioContext.destination);
+    // --- Connect Audio Graph ---
+    // 1. Source -> Deck Gain
+    sources.A.connect(gainA);
+    sources.B.connect(gainB);
 
-    // Define os ganhos iniciais: 100% dry, 0% wet
+    // 2. Initial Deck Gain -> Dry Path
+    gainA.connect(dryGain);
+    gainB.connect(dryGain);
+    
+    // 3. Dry/Wet Paths -> Master Gain
+    dryGain.connect(masterGain);
+    wetGain.connect(masterGain);
+
+    // 4. Master Gain -> Destination
+    masterGain.connect(audioContext.destination);
+
+    // Set initial gains
     wetGain.gain.value = 0.0;
     dryGain.gain.value = 1.0;
 };
 
-
 export const applyEffect = (effect: EffectType, params: EffectParams, targets: EffectTargets) => {
     if (!audioContext) return;
 
-    // 1. Desconecta o 'effectInput' de qualquer cadeia de efeito anterior
     if (activeEffectChainInput) {
         effectInput.disconnect(activeEffectChainInput);
         activeEffectChainInput = null;
     }
 
-    // 2. Redefine os ganhos de wet/dry para o padrão antes de aplicar novos parâmetros
     wetGain.gain.setValueAtTime(1.0, audioContext.currentTime);
     dryGain.gain.setValueAtTime(1.0, audioContext.currentTime);
 
-    // 3. Seleciona e configura a nova cadeia de efeito
     switch (effect) {
         case 'echo':
             activeEffectChainInput = echoDelay;
@@ -111,34 +115,40 @@ export const applyEffect = (effect: EffectType, params: EffectParams, targets: E
             break;
         case 'reverb':
             activeEffectChainInput = reverbNode;
-            // Ajusta wet/dry especificamente para o parâmetro 'mix' do reverb
             wetGain.gain.setValueAtTime(params.reverb.mix, audioContext.currentTime);
             dryGain.gain.setValueAtTime(1 - params.reverb.mix, audioContext.currentTime);
             break;
         case 'none':
         default:
-            // Nenhum efeito ativo, então o ganho 'wet' será zero
             wetGain.gain.setValueAtTime(0.0, audioContext.currentTime);
             break;
     }
 
-    // 4. Conecta o 'effectInput' à cadeia de efeito escolhida
     if (activeEffectChainInput) {
         effectInput.connect(activeEffectChainInput);
     }
 
-    // 5. Roteia as fontes de áudio (decks) com base nos alvos selecionados
-    Object.entries(sources).forEach(([deckId, sourceNode]) => {
-        if (sourceNode) {
-            sourceNode.disconnect(); // Desconecta do roteamento anterior
-            
-            // Por padrão, toda fonte se conecta ao caminho 'dry'
-            sourceNode.connect(dryGain);
-
-            // Se o deck for um alvo e um efeito estiver ativo, conecta também ao caminho 'wet'
-            if (targets[deckId as DeckId] && effect !== 'none') {
-                sourceNode.connect(effectInput);
-            }
+    // Reroute deck gains based on targets
+    const deckGains: Record<DeckId, GainNode> = { A: gainA, B: gainB };
+    Object.entries(deckGains).forEach(([deckId, gainNode]) => {
+        gainNode.disconnect();
+        gainNode.connect(dryGain);
+        if (targets[deckId as DeckId] && effect !== 'none') {
+            gainNode.connect(effectInput);
         }
     });
+};
+
+// --- New Volume Control Functions ---
+
+export const setDeckVolume = (deckId: DeckId, volume: number) => {
+    if (!audioContext) return;
+    const gainNode = deckId === 'A' ? gainA : gainB;
+    // Use exponential ramp for smoother volume changes
+    gainNode.gain.exponentialRampToValueAtTime(Math.max(0.0001, volume), audioContext.currentTime + 0.05);
+};
+
+export const setMasterVolume = (volume: number) => {
+    if (!audioContext) return;
+    masterGain.gain.exponentialRampToValueAtTime(Math.max(0.0001, volume), audioContext.currentTime + 0.05);
 };

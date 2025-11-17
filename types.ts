@@ -15,6 +15,7 @@ export interface DeckState {
   currentTime: number;
   duration: number;
   status: DeckStatus;
+  volume: number; // New: Volume for the deck (0 to 1)
 }
 
 export type VoiceOption = 'Puck' | 'Leda' | 'Kore' | 'Zephyr' | 'Callirrhoe' | 'Sadachbia';

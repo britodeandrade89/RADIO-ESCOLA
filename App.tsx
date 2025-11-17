@@ -5,7 +5,7 @@ import Playlist from './components/Playlist';
 import Modal from './components/Modal';
 import { generateDjBanter, generateDjSpeech } from './services/geminiService';
 import { saveSong, getSong } from './services/cacheService';
-import { initAudioEffects, applyEffect } from './services/audioEffectsService';
+import { initAudioEffects, applyEffect, setDeckVolume, setMasterVolume } from './services/audioEffectsService';
 import type { Song, DeckState, DeckId, VoiceOption, EffectType, EffectParams, EffectTargets } from './types';
 
 const initialDeckState: DeckState = {
@@ -14,6 +14,7 @@ const initialDeckState: DeckState = {
   currentTime: 0,
   duration: 0,
   status: 'empty',
+  volume: 1,
 };
 
 const initialEffectParams: EffectParams = {
@@ -32,6 +33,7 @@ function App() {
   const [deckAState, setDeckAState] = useState<DeckState>(initialDeckState);
   const [deckBState, setDeckBState] = useState<DeckState>(initialDeckState);
   const [activeDeckId, setActiveDeckId] = useState<DeckId>('A');
+  const [masterVolume, setMasterVolume] = useState<number>(1);
 
   const audioPlayerARef = useRef<HTMLAudioElement>(null);
   const audioPlayerBRef = useRef<HTMLAudioElement>(null);
@@ -102,6 +104,8 @@ function App() {
         
         if (currentSongIndex >= 0) {
             await loadSongToDeck(activeDeckId, currentSongIndex);
+        } else {
+            await loadSongToDeck(activeDeckId, -1);
         }
         if (nextIndex >= 0 && nextIndex !== currentSongIndex) {
             await loadSongToDeck(standbyDeckId, nextIndex);
@@ -147,9 +151,7 @@ function App() {
     setCurrentSongIndex(nextIndex);
     setActiveDeckId(newActiveDeckId);
 
-    // After state updates, the useEffect for loading will handle playback
     if (isPlaying) {
-      // The useEffect will load the song, we need to ensure it plays
       const newActivePlayer = newActiveDeckId === 'A' ? audioPlayerARef.current : audioPlayerBRef.current;
       newActivePlayer?.play().catch(console.error);
     }
@@ -169,7 +171,7 @@ function App() {
   const handleSongSelect = (index: number) => {
     setCurrentSongIndex(index);
     if (!isPlaying) {
-      handlePlayPause();
+      setIsPlaying(true);
     }
   };
 
@@ -196,10 +198,9 @@ function App() {
         name: file.name.replace(/\.[^/.]+$/, ""),
         artist: "Artista Desconhecido",
         url: URL.createObjectURL(file),
-        file: file, // Keep file for caching
+        file: file,
       }));
     
-    // Cache songs in the background
     newSongs.forEach(song => {
       if (song.file) {
         const reader = new FileReader();
@@ -253,9 +254,6 @@ function App() {
         setter(prev => (prev.status !== status ? { ...prev, status } : prev));
     };
     
-    const currentDeckStatus = isPlaying ? 'playing' : (deckAState.song && activeDeckId === 'A' ? 'paused' : 'empty');
-    const otherDeckStatus = isPlaying ? 'playing' : (deckBState.song && activeDeckId === 'B' ? 'paused' : 'empty');
-
     setDeckStatus('A', activeDeckId === 'A' ? (deckAState.song ? (isPlaying ? 'playing' : 'paused') : 'empty') : (deckAState.song ? 'standby' : 'empty'));
     setDeckStatus('B', activeDeckId === 'B' ? (deckBState.song ? (isPlaying ? 'playing' : 'paused') : 'empty') : (deckBState.song ? 'standby' : 'empty'));
 
@@ -286,10 +284,7 @@ function App() {
   const handleParamsChange = (effect: EffectType, param: keyof any, value: number) => {
     setEffectParams(prev => ({
       ...prev,
-      [effect]: {
-        ...prev[effect],
-        [param]: value
-      }
+      [effect]: { ...prev[effect], [param]: value }
     }));
   };
 
@@ -297,6 +292,21 @@ function App() {
     setEffectTargets(prev => ({...prev, [deckId]: !prev[deckId]}));
   };
   
+  const handleDeckVolumeChange = (deckId: DeckId, volume: number) => {
+    if (audioContextInitialized.current) {
+        setDeckVolume(deckId, volume);
+    }
+    const setDeckState = deckId === 'A' ? setDeckAState : setDeckBState;
+    setDeckState(prev => ({ ...prev, volume }));
+  };
+  
+  const handleMasterVolumeChange = (volume: number) => {
+    if (audioContextInitialized.current) {
+        setMasterVolume(volume);
+    }
+    setMasterVolume(volume);
+  };
+
   return (
     <div className="bg-gradient-to-br from-blue-900 via-gray-900 to-red-900 text-white flex flex-col h-screen overflow-hidden p-4">
       <div className="flex-1 flex flex-col md:flex-row gap-4">
@@ -313,6 +323,12 @@ function App() {
           isGenerating={isGenerating}
           selectedVoice={selectedVoice}
           onVoiceChange={setSelectedVoice}
+          deckAVolume={deckAState.volume}
+          onDeckAVolumeChange={(v) => handleDeckVolumeChange('A', v)}
+          deckBVolume={deckBState.volume}
+          onDeckBVolumeChange={(v) => handleDeckVolumeChange('B', v)}
+          masterVolume={masterVolume}
+          onMasterVolumeChange={handleMasterVolumeChange}
           activeEffect={activeEffect}
           onEffectChange={setActiveEffect}
           effectParams={effectParams}

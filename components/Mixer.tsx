@@ -1,4 +1,3 @@
-
 import React from 'react';
 import type { DeckId, VoiceOption, EffectType, EffectParams, EffectTargets } from '../types';
 import { voiceOptions } from '../types';
@@ -16,7 +15,14 @@ interface MixerProps {
   isGenerating: boolean;
   selectedVoice: VoiceOption;
   onVoiceChange: (voice: VoiceOption) => void;
-  // --- New Effect Props ---
+  // Volume Props
+  deckAVolume: number;
+  onDeckAVolumeChange: (volume: number) => void;
+  deckBVolume: number;
+  onDeckBVolumeChange: (volume: number) => void;
+  masterVolume: number;
+  onMasterVolumeChange: (volume: number) => void;
+  // Effect Props
   activeEffect: EffectType;
   onEffectChange: (effect: EffectType) => void;
   effectParams: EffectParams;
@@ -26,23 +32,10 @@ interface MixerProps {
 }
 
 const Mixer: React.FC<MixerProps> = ({
-  onPlayPause,
-  onNext,
-  onPrev,
-  isPlaying,
-  isPlaylistEmpty,
-  activeDeckId,
-  onGenerateText,
-  onGenerateAudio,
-  isGenerating,
-  selectedVoice,
-  onVoiceChange,
-  activeEffect,
-  onEffectChange,
-  effectParams,
-  onParamsChange,
-  effectTargets,
-  onTargetChange,
+  onPlayPause, onNext, onPrev, isPlaying, isPlaylistEmpty, activeDeckId,
+  onGenerateText, onGenerateAudio, isGenerating, selectedVoice, onVoiceChange,
+  deckAVolume, onDeckAVolumeChange, deckBVolume, onDeckBVolumeChange, masterVolume, onMasterVolumeChange,
+  activeEffect, onEffectChange, effectParams, onParamsChange, effectTargets, onTargetChange,
 }) => {
   const crossfaderTransform = activeDeckId === 'A' ? 'translateX(0%)' : 'translateX(100%)';
   const controlDisabled = isPlaylistEmpty;
@@ -74,46 +67,55 @@ const Mixer: React.FC<MixerProps> = ({
         </div>
       </div>
       
-      {/* --- Effects Panel --- */}
+      {/* --- Volume Controls --- */}
+      <div className="p-3 bg-gray-800 rounded-lg">
+        <label className="text-sm font-medium text-gray-400 text-center block mb-3">CHANNEL FADERS</label>
+        <div className="flex justify-around items-center h-24">
+            <VolumeSlider label="A" value={deckAVolume} onChange={onDeckAVolumeChange} disabled={controlDisabled}/>
+            <VolumeSlider label="B" value={deckBVolume} onChange={onDeckBVolumeChange} disabled={controlDisabled}/>
+            <VolumeSlider label="Master" value={masterVolume} onChange={onMasterVolumeChange} disabled={controlDisabled} accentColor="accent-green-500" />
+        </div>
+      </div>
+
       <EffectsPanel
-        activeEffect={activeEffect}
-        onEffectChange={onEffectChange}
-        effectParams={effectParams}
-        onParamsChange={onParamsChange}
-        effectTargets={effectTargets}
-        onTargetChange={onTargetChange}
+        activeEffect={activeEffect} onEffectChange={onEffectChange} effectParams={effectParams}
+        onParamsChange={onParamsChange} effectTargets={effectTargets} onTargetChange={onTargetChange}
         disabled={controlDisabled}
       />
-
 
       <div className="space-y-3">
         <button onClick={onGenerateText} className="w-full bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-semibold py-3 px-4 rounded-lg text-center cursor-pointer transition-all duration-300 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2" disabled={controlDisabled || isGenerating}>
           <i className="ph-fill ph-sparkle text-xl"></i>
           <span>Gerar Texto (Locutor)</span>
         </button>
-        
         <button onClick={onGenerateAudio} className="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-semibold py-3 px-4 rounded-lg text-center cursor-pointer transition-all duration-300 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2" disabled={controlDisabled || isGenerating}>
           <i className="ph-fill ph-microphone text-xl"></i>
           <span>Gerar Áudio (IA)</span>
         </button>
-
         <div className="space-y-1">
           <label htmlFor="voice-select" className="text-sm font-medium text-gray-400 text-center block">Voz da IA</label>
-          <select 
-            id="voice-select" 
-            value={selectedVoice}
-            onChange={(e) => onVoiceChange(e.target.value as VoiceOption)}
-            className="w-full bg-gray-700 border border-gray-600 text-white text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 p-2.5"
-            disabled={controlDisabled}
-          >
-            {Object.entries(voiceOptions).map(([value, label]) => (
-                <option key={value} value={value}>{label}</option>
-            ))}
+          <select id="voice-select" value={selectedVoice} onChange={(e) => onVoiceChange(e.target.value as VoiceOption)}
+            className="w-full bg-gray-700 border border-gray-600 text-white text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 p-2.5" disabled={controlDisabled}>
+            {Object.entries(voiceOptions).map(([value, label]) => (<option key={value} value={value}>{label}</option>))}
           </select>
         </div>
       </div>
     </div>
   );
 };
+
+const VolumeSlider: React.FC<{label: string, value: number, onChange: (v: number) => void, disabled: boolean, accentColor?: string}> = ({label, value, onChange, disabled, accentColor = 'accent-indigo-500'}) => (
+    <div className="flex flex-col items-center space-y-2 h-full">
+        <input 
+            type="range" min="0" max="1" step="0.01" value={value}
+            onChange={e => onChange(parseFloat(e.target.value))}
+            disabled={disabled}
+            className={`w-20 h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer -rotate-90 origin-center ${accentColor}`}
+            style={{ writingMode: 'bt-lr' } as React.CSSProperties} /* For Firefox */
+        />
+        <label className="font-bold text-sm text-gray-300 pt-2">{label}</label>
+    </div>
+);
+
 
 export default Mixer;
