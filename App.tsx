@@ -1,8 +1,10 @@
+
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import Deck from './components/Deck';
 import Mixer from './components/Mixer';
 import Playlist from './components/Playlist';
 import Modal from './components/Modal';
+import Footer from './components/Footer';
 import { generateDjBanter, generateDjSpeech } from './services/geminiService';
 import { saveSong, getSong } from './services/cacheService';
 import { initAudioEffects, applyEffect, setDeckVolume, setMasterVolume } from './services/audioEffectsService';
@@ -308,47 +310,51 @@ function App() {
   };
 
   return (
-    <div className="bg-gradient-to-br from-blue-900 via-gray-900 to-red-900 text-white flex flex-col h-screen overflow-hidden p-4">
-      <div className="flex-1 flex flex-col md:flex-row gap-4">
-        <Deck deckId="A" state={deckAState} isActive={activeDeckId === 'A'} />
-        <Mixer
-          onPlayPause={handlePlayPause}
-          onNext={handleNext}
-          onPrev={handlePrev}
-          isPlaying={isPlaying}
-          isPlaylistEmpty={playlist.length === 0}
-          activeDeckId={activeDeckId}
-          onGenerateText={handleGenerateText}
-          onGenerateAudio={handleGenerateAudio}
-          isGenerating={isGenerating}
-          selectedVoice={selectedVoice}
-          onVoiceChange={setSelectedVoice}
-          deckAVolume={deckAState.volume}
-          onDeckAVolumeChange={(v) => handleDeckVolumeChange('A', v)}
-          deckBVolume={deckBState.volume}
-          onDeckBVolumeChange={(v) => handleDeckVolumeChange('B', v)}
-          masterVolume={masterVolume}
-          onMasterVolumeChange={handleMasterVolumeChange}
-          activeEffect={activeEffect}
-          onEffectChange={setActiveEffect}
-          effectParams={effectParams}
-          onParamsChange={handleParamsChange}
-          effectTargets={effectTargets}
-          onTargetChange={handleTargetChange}
+    <div className="bg-gradient-to-br from-blue-900 via-gray-900 to-red-900 text-white min-h-screen flex flex-col">
+      <div className="flex-1 p-4 flex flex-col gap-4">
+        <div className="flex flex-col md:flex-row gap-4">
+            <Deck deckId="A" state={deckAState} isActive={activeDeckId === 'A'} />
+            <Mixer
+                onPlayPause={handlePlayPause}
+                onNext={handleNext}
+                onPrev={handlePrev}
+                isPlaying={isPlaying}
+                isPlaylistEmpty={playlist.length === 0}
+                activeDeckId={activeDeckId}
+                onGenerateText={handleGenerateText}
+                onGenerateAudio={handleGenerateAudio}
+                isGenerating={isGenerating}
+                selectedVoice={selectedVoice}
+                onVoiceChange={setSelectedVoice}
+                deckAVolume={deckAState.volume}
+                onDeckAVolumeChange={(v) => handleDeckVolumeChange('A', v)}
+                deckBVolume={deckBState.volume}
+                onDeckBVolumeChange={(v) => handleDeckVolumeChange('B', v)}
+                masterVolume={masterVolume}
+                onMasterVolumeChange={handleMasterVolumeChange}
+                activeEffect={activeEffect}
+                onEffectChange={setActiveEffect}
+                effectParams={effectParams}
+                onParamsChange={handleParamsChange}
+                effectTargets={effectTargets}
+                onTargetChange={handleTargetChange}
+            />
+            <Deck deckId="B" state={deckBState} isActive={activeDeckId === 'B'} />
+        </div>
+        <Playlist
+            songs={playlist}
+            currentSongIndex={currentSongIndex}
+            activeDeckSongIndex={currentSongIndex}
+            onFilesAdded={handleFilesAdded}
+            onSongSelect={handleSongSelect}
+            isShuffle={isShuffle}
+            onShuffleToggle={setIsShuffle}
+            isRepeat={isRepeat}
+            onRepeatToggle={setIsRepeat}
         />
-        <Deck deckId="B" state={deckBState} isActive={activeDeckId === 'B'} />
       </div>
-      <Playlist
-        songs={playlist}
-        currentSongIndex={currentSongIndex}
-        activeDeckSongIndex={currentSongIndex}
-        onFilesAdded={handleFilesAdded}
-        onSongSelect={handleSongSelect}
-        isShuffle={isShuffle}
-        onShuffleToggle={setIsShuffle}
-        isRepeat={isRepeat}
-        onRepeatToggle={setIsRepeat}
-      />
+
+      <Footer />
       
       <audio ref={audioPlayerARef} crossOrigin="anonymous" />
       <audio ref={audioPlayerBRef} crossOrigin="anonymous" />

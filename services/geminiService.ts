@@ -2,10 +2,10 @@
 import { GoogleGenAI, Modality } from "@google/genai";
 import type { Song, VoiceOption } from '../types';
 
-const API_KEY = process.env.API_KEY;
+const API_KEY = "AIzaSyCJ9K6sovkNzeO_fuQbSPD9LnIUG0p8Da4";
 
 if (!API_KEY) {
-  throw new Error("API_KEY environment variable not set");
+  throw new Error("API_KEY not set");
 }
 
 const ai = new GoogleGenAI({ apiKey: API_KEY });
@@ -27,7 +27,7 @@ export const generateDjBanter = async (currentSong: Song | null, nextSong: Song 
       model: 'gemini-2.5-flash',
       contents: prompt,
     });
-    return response.text;
+    return response.text || "Vamos curtir o som!";
   } catch (error) {
     console.error("Error generating DJ banter:", error);
     return "Ocorreu um erro ao tentar gerar o texto. Tente novamente.";

@@ -32,8 +32,8 @@ const Playlist: React.FC<PlaylistProps> = ({
   };
 
   return (
-    <div className="h-1/3 flex flex-col p-4 bg-gray-900 rounded-lg mt-4">
-      <div className="flex flex-col sm:flex-row justify-between items-center mb-2 gap-4">
+    <div className="min-h-[24rem] flex flex-col p-4 bg-gray-900 rounded-lg mt-4 shadow-xl">
+      <div className="flex flex-col sm:flex-row justify-between items-center mb-4 gap-4">
         <h2 className="text-2xl font-bold text-white">Biblioteca de Músicas</h2>
         
         <div className="flex flex-wrap justify-center gap-4">
@@ -45,7 +45,7 @@ const Playlist: React.FC<PlaylistProps> = ({
             <input type="checkbox" id="repeat-toggle" checked={isRepeat} onChange={(e) => onRepeatToggle(e.target.checked)} className="form-checkbox h-5 w-5 bg-gray-700 border-gray-600 text-blue-500 rounded focus:ring-blue-500" />
             <label htmlFor="repeat-toggle" className="text-sm font-medium text-gray-300">Repetir Playlist</label>
           </div>
-          <label className="bg-blue-600 hover:bg-blue-500 text-white font-semibold py-2 px-4 rounded-lg text-center cursor-pointer transition-colors duration-200 flex items-center">
+          <label className="bg-blue-600 hover:bg-blue-500 text-white font-semibold py-2 px-4 rounded-lg text-center cursor-pointer transition-colors duration-200 flex items-center shadow-md">
             <i className="ph ph-plus-circle mr-2"></i>
             Adicionar Músicas
             <input type="file" multiple accept="audio/*" className="hidden" onChange={handleFileChange} />
@@ -53,25 +53,32 @@ const Playlist: React.FC<PlaylistProps> = ({
         </div>
       </div>
       
-      <div id="playlist" className="flex-1 bg-gray-950 rounded-lg overflow-y-auto min-h-[100px]">
+      <div id="playlist" className="flex-1 bg-gray-950 rounded-lg overflow-y-auto min-h-[200px] border border-gray-800">
         {songs.length === 0 ? (
-          <p className="text-gray-500 text-center p-8">Sua playlist está vazia. Adicione músicas para começar.</p>
+          <div className="h-full flex flex-col items-center justify-center text-gray-500 p-8">
+             <i className="ph ph-music-notes text-6xl mb-4 opacity-50"></i>
+             <p className="text-lg">Sua playlist está vazia.</p>
+             <p className="text-sm mt-2">Adicione arquivos de áudio para começar a mixar.</p>
+          </div>
         ) : (
           <ul>
             {songs.map((song, index) => (
               <li
                 key={song.url}
                 onClick={() => onSongSelect(index)}
-                className={`p-3 flex justify-between items-center cursor-pointer hover:bg-gray-800 transition-colors duration-150 border-b border-gray-800 ${index === activeDeckSongIndex ? 'bg-blue-900/50' : ''}`}
+                className={`p-3 flex justify-between items-center cursor-pointer hover:bg-gray-800 transition-colors duration-150 border-b border-gray-800 last:border-0 ${index === activeDeckSongIndex ? 'bg-blue-900/40 border-l-4 border-l-blue-500' : ''}`}
               >
-                <div className="flex items-center space-x-3 overflow-hidden">
+                <div className="flex items-center space-x-4 overflow-hidden">
+                  <span className="text-xs text-gray-600 w-6 text-center">{index + 1}</span>
                   <i className={`ph ${index === activeDeckSongIndex ? 'ph-fill ph-speaker-high text-blue-400' : 'ph-music-note text-gray-400'}`}></i>
-                  <div>
+                  <div className="min-w-0">
                     <p className={`font-semibold truncate ${index === activeDeckSongIndex ? 'text-blue-300' : 'text-white'}`}>{song.name}</p>
-                    <p className="text-sm text-gray-400">{song.artist}</p>
+                    <p className="text-sm text-gray-500 truncate">{song.artist}</p>
                   </div>
                 </div>
-                <i className="ph ph-play-circle text-gray-500 text-xl"></i>
+                <button className="text-gray-500 hover:text-white p-2">
+                   <i className={`ph ${index === activeDeckSongIndex ? 'ph-fill ph-chart-bar text-blue-400' : 'ph-play-circle text-xl'}`}></i>
+                </button>
               </li>
             ))}
           </ul>
